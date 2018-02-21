@@ -16,8 +16,12 @@ exports['test out of range encoding'] = function (assert) {
   });
 };
 
+exports['test out of range decoding'] = function (assert) {
+  assert.equal(base64.decode('='.charCodeAt(0)), -1);
+};
+
 exports['test normal encoding and decoding'] = function (assert) {
   for (var i = 0; i < 64; i++) {
-    base64.encode(i);
+    assert.equal(base64.decode(base64.encode(i).charCodeAt(0)), i);
   }
 };

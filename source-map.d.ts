@@ -1,9 +1,8 @@
-// Type definitions for source-map 0.7
+// Type definitions for source-map 0.5
 // Project: https://github.com/mozilla/source-map
 // Definitions by: Morten Houston Ludvigsen <https://github.com/MortenHoustonLudvigsen>,
-//                 Ron Buckton <https://github.com/rbuckton>,
-//                 John Vilk <https://github.com/jvilk>
-// Definitions: https://github.com/mozilla/source-map
+//                 Ron Buckton <https://github.com/rbuckton>
+// Definitions: https://github.com/DefinitelyTyped/DefinitelyTyped
 export type SourceMapUrl = string;
 
 export interface StartOfSourceMap {
@@ -179,11 +178,6 @@ export interface SourceMapConsumer {
      *        `SourceMapConsumer.GENERATED_ORDER`.
      */
     eachMapping(callback: (mapping: MappingItem) => void, context?: any, order?: number): void;
-    /**
-     * Free this source map consumer's associated wasm data that is manually-managed.
-     * Alternatively, you can use SourceMapConsumer.with to avoid needing to remember to call destroy.
-     */
-    destroy(): void;
 }
 
 export interface SourceMapConsumerConstructor {
@@ -194,9 +188,9 @@ export interface SourceMapConsumerConstructor {
     GREATEST_LOWER_BOUND: number;
     LEAST_UPPER_BOUND: number;
 
-    new (rawSourceMap: RawSourceMap, sourceMapUrl?: SourceMapUrl): Promise<BasicSourceMapConsumer>;
-    new (rawSourceMap: RawIndexMap, sourceMapUrl?: SourceMapUrl): Promise<IndexedSourceMapConsumer>;
-    new (rawSourceMap: RawSourceMap | RawIndexMap | string, sourceMapUrl?: SourceMapUrl): Promise<BasicSourceMapConsumer | IndexedSourceMapConsumer>;
+    new (rawSourceMap: RawSourceMap, sourceMapUrl?: SourceMapUrl): BasicSourceMapConsumer;
+    new (rawSourceMap: RawIndexMap, sourceMapUrl?: SourceMapUrl): IndexedSourceMapConsumer;
+    new (rawSourceMap: RawSourceMap | RawIndexMap | string, sourceMapUrl?: SourceMapUrl): BasicSourceMapConsumer | IndexedSourceMapConsumer;
 
     /**
      * Create a BasicSourceMapConsumer from a SourceMapGenerator.
@@ -204,39 +198,7 @@ export interface SourceMapConsumerConstructor {
      * @param sourceMap
      *        The source map that will be consumed.
      */
-    fromSourceMap(sourceMap: SourceMapGenerator, sourceMapUrl?: SourceMapUrl): Promise<BasicSourceMapConsumer>;
-
-    /**
-     * Construct a new `SourceMapConsumer` from `rawSourceMap` and `sourceMapUrl`
-     * (see the `SourceMapConsumer` constructor for details. Then, invoke the `async
-     * function f(SourceMapConsumer) -> T` with the newly constructed consumer, wait
-     * for `f` to complete, call `destroy` on the consumer, and return `f`'s return
-     * value.
-     *
-     * You must not use the consumer after `f` completes!
-     *
-     * By using `with`, you do not have to remember to manually call `destroy` on
-     * the consumer, since it will be called automatically once `f` completes.
-     *
-     * ```js
-     * const xSquared = await SourceMapConsumer.with(
-     *   myRawSourceMap,
-     *   null,
-     *   async function (consumer) {
-     *     // Use `consumer` inside here and don't worry about remembering
-     *     // to call `destroy`.
-     *
-     *     const x = await whatever(consumer);
-     *     return x * x;
-     *   }
-     * );
-     *
-     * // You may not use that `consumer` anymore out here; it has
-     * // been destroyed. But you can use `xSquared`.
-     * console.log(xSquared);
-     * ```
-     */
-    with<T>(rawSourceMap: RawSourceMap | RawIndexMap | string, sourceMapUrl: SourceMapUrl | null | undefined, callback: (consumer: BasicSourceMapConsumer | IndexedSourceMapConsumer) => Promise<T> | T): Promise<T>;
+    fromSourceMap(sourceMap: SourceMapGenerator, sourceMapUrl?: SourceMapUrl): BasicSourceMapConsumer;
 }
 
 export const SourceMapConsumer: SourceMapConsumerConstructor;
@@ -251,7 +213,7 @@ export interface BasicSourceMapConsumer extends SourceMapConsumer {
 export interface BasicSourceMapConsumerConstructor {
     prototype: BasicSourceMapConsumer;
 
-    new (rawSourceMap: RawSourceMap | string): Promise<BasicSourceMapConsumer>;
+    new (rawSourceMap: RawSourceMap | string): BasicSourceMapConsumer;
 
     /**
      * Create a BasicSourceMapConsumer from a SourceMapGenerator.
@@ -259,7 +221,7 @@ export interface BasicSourceMapConsumerConstructor {
      * @param sourceMap
      *        The source map that will be consumed.
      */
-    fromSourceMap(sourceMap: SourceMapGenerator): Promise<BasicSourceMapConsumer>;
+    fromSourceMap(sourceMap: SourceMapGenerator): BasicSourceMapConsumer;
 }
 
 export const BasicSourceMapConsumer: BasicSourceMapConsumerConstructor;
@@ -271,7 +233,7 @@ export interface IndexedSourceMapConsumer extends SourceMapConsumer {
 export interface IndexedSourceMapConsumerConstructor {
     prototype: IndexedSourceMapConsumer;
 
-    new (rawSourceMap: RawIndexMap | string): Promise<IndexedSourceMapConsumer>;
+    new (rawSourceMap: RawIndexMap | string): IndexedSourceMapConsumer;
 }
 
 export const IndexedSourceMapConsumer: IndexedSourceMapConsumerConstructor;

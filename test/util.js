@@ -249,13 +249,6 @@ exports.emptyMap = {
   sources: [],
   mappings: ''
 };
-exports.mapWithSourcelessMapping = {
-  version: 3,
-  file: 'example.js',
-  names: [],
-  sources: ['example.js'],
-  mappings: 'AAgCA,C'
-};
 
 
 function assertMapping(generatedLine, generatedColumn, originalSource,

@@ -9,7 +9,7 @@ var assert = require('assert');
 var fs = require('fs');
 var path = require('path');
 
-async function run(tests) {
+function run(tests) {
   var total = 0;
   var passed = 0;
 
@@ -18,7 +18,7 @@ async function run(tests) {
       if (/^test/.test(k)) {
         total++;
         try {
-          await tests[i].testCase[k](assert);
+          tests[i].testCase[k](assert);
           passed++;
         }
         catch (e) {
@@ -51,15 +51,11 @@ var requires = fs.readdirSync(__dirname)
   .filter(isTestFile)
   .map(toRelativeModule);
 
-run(requires.map(require).map(function (mod, i) {
+var code = run(requires.map(require).map(function (mod, i) {
   return {
     name: requires[i],
     testCase: mod
   };
-})).then(
-  code => process.exit(code),
-  e => {
-    console.error(e);
-    process.exit(1);
-  }
-);
+}));
+
+process.exit(code);

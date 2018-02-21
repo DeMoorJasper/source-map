@@ -15,193 +15,60 @@ if (!console.profile) {
 var __benchmarkResults = [];
 var benchmarkBlackbox = [].push.bind(__benchmarkResults);
 
-const now = typeof window === "object" && window.performance && window.performance.now
-      ? () => window.performance.now()
-      : () => now();
-
-const yieldForTick = typeof setTimeout === "function"
-      ? () => new Promise(resolve => setTimeout(resolve, 1))
-      : () => Promise.resolve();
-
 // Benchmark running an action n times.
-async function benchmark(setup, action, tearDown = () => {}) {
+function benchmark(name, setup, action) {
   __benchmarkResults = [];
-
-  console.time("setup");
-  await setup();
-  console.timeEnd("setup");
+  setup();
 
   // Warm up the JIT.
-  console.time("warmup");
-  for (let i = 0; i < WARM_UP_ITERATIONS; i++) {
-    await action();
-    await yieldForTick();
+  var start = Date.now();
+  while ((Date.now() - start) < 5000 /* 5 seconds */) {
+    action();
   }
-  console.timeEnd("warmup");
 
-  const stats = new Stats("ms");
+  var stats = new Stats("ms");
 
-  for (let i = 0; i < BENCH_ITERATIONS; i++) {
+  console.profile(name);
+
+  while ((Date.now() - start) < 30000 /* 30 seconds */) {
     console.time("iteration");
-    const thisIterationStart = now();
-    await action();
-    stats.take(now() - thisIterationStart);
+    var thisIterationStart = Date.now();
+    action();
+    stats.take(Date.now() - thisIterationStart);
     console.timeEnd("iteration");
-
-    await yieldForTick();
   }
 
-  await tearDown();
+  console.profileEnd(name);
+
   return stats;
 }
 
-async function getTestMapping() {
-  let smc = await new sourceMap.SourceMapConsumer(testSourceMap);
+var EXPECTED_NUMBER_OF_MAPPINGS = 2350714;
 
-  let mappings = [];
-  smc.eachMapping([].push, mappings, sourceMap.SourceMapConsumer.ORIGINAL_ORDER);
+var smg = null;
 
-  let testMapping = mappings[Math.floor(mappings.length / 13)];
-  smc.destroy();
-  return testMapping;
+function benchmarkSerializeSourceMap() {
+  return benchmark(
+    "serialize source map",
+    function () {
+      if (!smg) {
+        var smc = new sourceMap.SourceMapConsumer(testSourceMap);
+        smg = sourceMap.SourceMapGenerator.fromSourceMap(smc);
+      }
+    },
+    function () {
+      benchmarkBlackbox(smg.toString());
+    }
+  );
 }
 
-var benchmarks = {
-  "SourceMapGenerator#toString": () => {
-    let smg;
-    return benchmark(
-      async function () {
-        var smc = await new sourceMap.SourceMapConsumer(testSourceMap);
-        smg = sourceMap.SourceMapGenerator.fromSourceMap(smc);
-        smc.destroy();
-      },
-      () => {
-        benchmarkBlackbox(smg.toString().length);
-      }
-    );
-  },
-
-  "set.first.breakpoint": () => {
-    let testMapping;
-    return benchmark(
-      async function () {
-        testMapping = await getTestMapping();
-      },
-      async function () {
-        let smc = await new sourceMap.SourceMapConsumer(testSourceMap);
-
-        benchmarkBlackbox(smc.allGeneratedPositionsFor({
-          source: testMapping.source,
-          line: testMapping.originalLine,
-        }).length);
-
-        smc.destroy();
-      }
-    );
-  },
-
-  "first.pause.at.exception": () => {
-    let testMapping;
-    return benchmark(
-      async function () {
-        testMapping = await getTestMapping();
-      },
-      async function () {
-        let smc = await new sourceMap.SourceMapConsumer(testSourceMap);
-
-        benchmarkBlackbox(smc.originalPositionFor({
-          line: testMapping.generatedLine,
-          column: testMapping.generatedColumn,
-        }));
-
-        smc.destroy();
-      }
-    );
-  },
-
-  "subsequent.setting.breakpoints": () => {
-    let testMapping;
-    let smc;
-    return benchmark(
-      async function () {
-        testMapping = await getTestMapping();
-        smc = await new sourceMap.SourceMapConsumer(testSourceMap);
-      },
-      async function () {
-        benchmarkBlackbox(smc.allGeneratedPositionsFor({
-          source: testMapping.source,
-          line: testMapping.originalLine,
-        }));
-      },
-      function () {
-        smc.destroy();
-      }
-    )
-  },
-
-  "subsequent.pausing.at.exceptions": () => {
-    let testMapping;
-    let smc;
-    return benchmark(
-      async function () {
-        testMapping = await getTestMapping();
-        smc = await new sourceMap.SourceMapConsumer(testSourceMap);
-      },
-      async function () {
-        benchmarkBlackbox(smc.originalPositionFor({
-          line: testMapping.generatedLine,
-          column: testMapping.generatedColumn,
-        }));
-      },
-      function () {
-        smc.destroy();
-      }
-    );
-  },
-
-  "parse.and.iterate": () => {
-    return benchmark(
-      noop,
-      async function () {
-        const smc = await new sourceMap.SourceMapConsumer(testSourceMap);
-
-        let maxLine = 0;
-        let maxCol = 0;
-        smc.eachMapping(m => {
-          maxLine = Math.max(maxLine, m.generatedLine);
-          maxLine = Math.max(maxLine, m.originalLine);
-          maxCol = Math.max(maxCol, m.generatedColumn);
-          maxCol = Math.max(maxCol, m.originalColumn);
-        });
-        benchmarkBlackbox(maxLine);
-        benchmarkBlackbox(maxCol);
-
-        smc.destroy();
-      }
-    );
-  },
-
-  "iterate.already.parsed": () => {
-    let smc;
-    return benchmark(
-      async function () {
-        smc = await new sourceMap.SourceMapConsumer(testSourceMap);
-      },
-      async function () {
-        let maxLine = 0;
-        let maxCol = 0;
-        smc.eachMapping(m => {
-          maxLine = Math.max(maxLine, m.generatedLine);
-          maxLine = Math.max(maxLine, m.originalLine);
-          maxCol = Math.max(maxCol, m.generatedColumn);
-          maxCol = Math.max(maxCol, m.originalColumn);
-        });
-        benchmarkBlackbox(maxLine);
-        benchmarkBlackbox(maxCol);
-      },
-      function () {
-        smc.destroy();
-      }
-    );
-  }
-};
+function benchmarkParseSourceMap() {
+  return benchmark("parse source map", noop, function () {
+    var smc = new sourceMap.SourceMapConsumer(testSourceMap);
+    if (smc._generatedMappings.length !== EXPECTED_NUMBER_OF_MAPPINGS) {
+      throw new Error("Expected " + EXPECTED_NUMBER_OF_MAPPINGS + " mappings, found "
+                      + smc._generatedMappings.length);
+    }
+    benchmarkBlackbox(smc._generatedMappings.length);
+  });
+}
